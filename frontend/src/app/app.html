@@ -1,0 +1,443 @@
+<nav class="navbar navbar-dark bg-success shadow-sm mb-4 py-2">
+  <div class="container">
+    <a class="navbar-brand d-flex align-items-center fw-bold" href="#">
+      <div class="bg-white rounded-3 p-1 me-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 44px; height: 44px;">
+        <img src="logo.png" alt="Logo WankaAgro Track" style="max-height: 36px; max-width: 36px; object-fit: contain;" />
+      </div>
+      <div>
+        <span class="d-block lh-1">WankaAgro Track</span>
+        <small class="text-white-50 fw-normal" style="font-size: 0.72rem;">Trazabilidad Agrícola • Valle del Mantaro</small>
+      </div>
+    </a>
+
+    <div class="d-flex align-items-center gap-2">
+      <!-- Si NO hay sesión activa -->
+      <ng-container *ngIf="!usuarioActual()">
+        <button class="btn btn-outline-light btn-sm fw-semibold" data-bs-toggle="modal" data-bs-target="#modalUnirse">
+          <i class="bi bi-person-plus-fill me-1"></i> Unirme como Productor
+        </button>
+        <button class="btn btn-light text-success btn-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalLogin">
+          <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión
+        </button>
+      </ng-container>
+
+      <!-- Si HAY sesión activa -->
+      <ng-container *ngIf="usuarioActual()">
+        <div class="text-end text-white me-2 d-none d-sm-block">
+          <div class="fw-bold small lh-1">{{ usuarioActual()!.nombre_completo }}</div>
+          <span class="badge bg-light text-success" style="font-size: 0.65rem;">
+            {{ usuarioActual()!.rol }} • {{ usuarioActual()!.distrito }}
+          </span>
+        </div>
+        <button class="btn btn-outline-light btn-sm" (click)="cerrarSesion()">
+          <i class="bi bi-box-arrow-right me-1"></i> Salir
+        </button>
+      </ng-container>
+    </div>
+  </div>
+</nav>
+
+<main class="container flex-grow-1 pb-5">
+  <!-- Alerta dinámica -->
+  <div *ngIf="alerta()" class="alert alert-{{ alerta()!.tipo }} alert-dismissible fade show" role="alert">
+    {{ alerta()!.mensaje }}
+    <button type="button" class="btn-close" (click)="alerta.set(null)"></button>
+  </div>
+
+  <!-- Cabecera y botón publicar -->
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+    <div>
+      <h2 class="fw-bold mb-0">Cosechas Disponibles Hoy</h2>
+      <p class="text-muted mb-0">Reserva directo a productores locales sin intermediarios.</p>
+    </div>
+
+    <!-- Solo productores logueados o acceso directo con login -->
+    <button
+      *ngIf="usuarioActual()?.rol === 'PRODUCTOR'"
+      class="btn btn-success"
+      data-bs-toggle="modal"
+      data-bs-target="#modalPublicar"
+    >
+      <i class="bi bi-plus-circle me-1"></i> Publicar Nueva Cosecha
+    </button>
+
+    <button
+      *ngIf="!usuarioActual()"
+      class="btn btn-success"
+      data-bs-toggle="modal"
+      data-bs-target="#modalLogin"
+    >
+      <i class="bi bi-lock-fill me-1"></i> Inicia sesión para publicar
+    </button>
+  </div>
+
+  <!-- Grilla de Lotes -->
+  <div class="row g-4">
+    <div class="col-md-4" *ngFor="let lote of lotes()">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <span class="badge bg-success-subtle text-success border border-success-subtle">
+              {{ lote.nombre_categoria }}
+            </span>
+            <small class="text-danger fw-semibold">
+              <i class="bi bi-geo-alt-fill"></i> {{ lote.origen }}
+            </small>
+          </div>
+
+          <h5 class="card-title fw-bold mb-1">{{ lote.nombre_producto }}</h5>
+          <p class="text-muted small mb-3">
+            Productor: <strong>{{ lote.productor }}</strong>
+          </p>
+
+          <div class="bg-light rounded p-2 mb-3">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted small">Precio ({{ lote.unidad_medida }}):</span>
+              <span class="fw-bold text-success">S/ {{ lote.precio_unitario | number:'1.2-2' }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted small">Stock disponible:</span>
+              <span class="fw-bold">{{ lote.stock_disponible }}</span>
+            </div>
+          </div>
+
+          <p class="small text-muted mb-1">
+            <i class="bi bi-calendar-event me-1 text-primary"></i> Cosecha: {{ lote.fecha_cosecha }}
+          </p>
+          <p class="small text-muted mb-3">
+            <i class="bi bi-shop me-1 text-warning"></i> {{ lote.punto_entrega }}
+          </p>
+
+          <button
+            class="btn btn-outline-primary w-100"
+            data-bs-toggle="modal"
+            data-bs-target="#modalReservar"
+            (click)="abrirModalReserva(lote)"
+          >
+            <i class="bi bi-bag-check me-1"></i> Reservar Directo
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historial de Pedidos / Reservas (visible al iniciar sesión) -->
+  <section *ngIf="usuarioActual()" class="mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="fw-bold mb-0">
+          <i class="bi bi-receipt-cutoff text-success me-2"></i>
+          {{ usuarioActual()!.rol === 'PRODUCTOR' ? 'Pedidos Recibidos en mis Cosechas' : 'Mis Reservas Realizadas' }}
+        </h3>
+        <p class="text-muted small mb-0">
+          Registro de trazabilidad comercial vinculado a {{ usuarioActual()!.nombre_completo }}.
+        </p>
+      </div>
+      <button class="btn btn-outline-success btn-sm" (click)="cargarHistorialPedidos()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+      </button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th># Pedido</th>
+              <th>Fecha</th>
+              <th>Producto</th>
+              <th>{{ usuarioActual()!.rol === 'PRODUCTOR' ? 'Comprador (Contacto)' : 'Productor (Contacto)' }}</th>
+              <th>Cantidad</th>
+              <th>Total</th>
+              <th>Punto de Entrega</th>
+              <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of pedidosHistorial()">
+              <td class="fw-bold text-success">#{{ p.id_pedido }}</td>
+              <td class="small text-muted">{{ p.fecha_pedido }}</td>
+              <td class="fw-semibold">{{ p.nombre_producto }}</td>
+              <td>
+                <ng-container *ngIf="usuarioActual()!.rol === 'PRODUCTOR'">
+                  <div>{{ p.comprador }}</div>
+                  <small class="text-muted"><i class="bi bi-whatsapp text-success me-1"></i>{{ p.telefono_comprador }}</small>
+                </ng-container>
+                <ng-container *ngIf="usuarioActual()!.rol !== 'PRODUCTOR'">
+                  <div>{{ p.productor }}</div>
+                  <small class="text-muted"><i class="bi bi-whatsapp text-success me-1"></i>{{ p.telefono_productor }}</small>
+                </ng-container>
+              </td>
+              <td>{{ p.cantidad }} {{ p.unidad_medida }}</td>
+              <td class="fw-bold text-success">S/ {{ p.total_pagar | number:'1.2-2' }}</td>
+              <td class="small">{{ p.punto_entrega }}</td>
+              <td>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                  {{ p.estado }}
+                </span>
+              </td>
+            </tr>
+
+            <tr *ngIf="pedidosHistorial().length === 0">
+              <td colspan="8" class="text-center text-muted py-4">
+                Aún no tienes movimientos registrados en tu historial.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Banner de Afiliación para nuevos productores -->
+  <section *ngIf="!usuarioActual()" class="mt-5 p-4 bg-white rounded-4 shadow-sm border border-success-subtle d-flex flex-column flex-md-row align-items-center justify-content-between gap-3">
+    <div>
+      <span class="badge bg-success mb-2">Red Agrícola del Valle del Mantaro</span>
+      <h4 class="fw-bold mb-1">¿Eres agricultor en Huancayo, Concepción o Chupaca?</h4>
+      <p class="text-muted mb-0">
+        Regístrate gratis en WankaAgro Track y publica tus cosechas directamente para compradores locales sin intermediarios.
+      </p>
+    </div>
+    <button class="btn btn-success btn-lg px-4 flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalUnirse">
+      <i class="bi bi-person-check-fill me-2"></i>Afiliarme Ahora
+    </button>
+  </section>
+</main>
+
+<!-- Pie de Página -->
+<footer class="bg-dark text-light py-4 mt-auto border-top border-success border-3">
+  <div class="container">
+    <div class="row gy-3 align-items-center">
+      <div class="col-md-5 d-flex align-items-center">
+        <div class="bg-white rounded-3 p-1 me-3 d-flex align-items-center justify-content-center" style="width: 52px; height: 52px; flex-shrink: 0;">
+          <img src="logo.png" alt="Logo WankaAgro Track" style="max-height: 44px; max-width: 44px; object-fit: contain;" />
+        </div>
+        <div>
+          <h6 class="fw-bold text-success mb-1">WankaAgro Track</h6>
+          <p class="text-white-50 small mb-0">
+            Plataforma de trazabilidad agrícola y comercio directo sin intermediarios en el Valle del Mantaro.
+          </p>
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <h6 class="fw-semibold small text-uppercase text-white-50 mb-1">Zonas de Cobertura</h6>
+        <p class="small text-white-50 mb-0">
+          <i class="bi bi-geo-alt text-success me-1"></i>Huancayo • Concepción • Chupaca
+        </p>
+      </div>
+    </div>
+
+    <hr class="border-secondary my-3" />
+
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-center small text-white-50">
+      <span>© 2026 WankaAgro Track — Huancayo, Junín, Perú.</span>
+      <span>Proyecto de Ingeniería de Software • Arquitectura por Capas</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Modal Iniciar Sesión -->
+<div class="modal fade" id="modalLogin" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <form class="modal-content" (ngSubmit)="iniciarSesion()">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-shield-lock-fill me-2"></i>Iniciar Sesión — WankaAgro Track
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">
+          Ingresa tu <strong>DNI</strong> y tu número de <strong>celular</strong> registrado como clave de acceso.
+        </p>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Número de DNI</label>
+          <input
+            type="text"
+            maxlength="8"
+            class="form-control"
+            [(ngModel)]="credenciales.dni"
+            name="login_dni"
+            placeholder="Ej. 41234567"
+            required
+          />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Celular / Clave de Acceso</label>
+          <input
+            type="password"
+            maxlength="9"
+            class="form-control"
+            [(ngModel)]="credenciales.clave"
+            name="login_clave"
+            placeholder="Ingresa tus 9 dígitos"
+            required
+          />
+        </div>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-link text-success p-0 small" data-bs-toggle="modal" data-bs-target="#modalUnirse">
+          ¿Eres agricultor nuevo? Regístrate aquí
+        </button>
+        <div>
+          <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-success" data-bs-dismiss="modal">Ingresar</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Reservar -->
+<div class="modal fade" id="modalReservar" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" (ngSubmit)="confirmarReserva()">
+      <div class="modal-header">
+        <h5 class="modal-title">Reservar {{ loteSeleccionado()?.nombre_producto }}</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" *ngIf="loteSeleccionado()">
+        <!-- Si está logueado como comprador, muestra su nombre fijo -->
+        <div class="mb-3" *ngIf="usuarioActual()?.rol === 'COMPRADOR'">
+          <label class="form-label">Comprador Autenticado</label>
+          <input type="text" class="form-control bg-light" [value]="usuarioActual()!.nombre_completo" readonly />
+        </div>
+
+        <!-- Si no está logueado, permite seleccionar comprador -->
+        <div class="mb-3" *ngIf="usuarioActual()?.rol !== 'COMPRADOR'">
+          <label class="form-label">Comprador</label>
+          <select class="form-select" [(ngModel)]="nuevaReserva.id_comprador" name="id_comprador" required>
+            <option *ngFor="let c of catalogos().compradores" [ngValue]="c.id">{{ c.nombre }}</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">
+            Cantidad (Máx. {{ loteSeleccionado()!.stock_disponible }} {{ loteSeleccionado()!.unidad_medida }})
+          </label>
+          <input
+            type="number"
+            class="form-control"
+            [(ngModel)]="nuevaReserva.cantidad"
+            name="cantidad"
+            min="1"
+            [max]="loteSeleccionado()!.stock_disponible"
+            required
+          />
+        </div>
+        <div class="alert alert-light border">
+          Total estimado:
+          <strong class="text-success">
+            S/ {{ (nuevaReserva.cantidad * loteSeleccionado()!.precio_unitario) | number:'1.2-2' }}
+          </strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">Confirmar Reserva</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Publicar Cosecha -->
+<div class="modal fade" id="modalPublicar" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" (ngSubmit)="guardarNuevoLote()">
+      <div class="modal-header">
+        <h5 class="modal-title">Publicar Nueva Cosecha</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3" *ngIf="usuarioActual()?.rol === 'PRODUCTOR'">
+          <label class="form-label">Productor Autenticado</label>
+          <input type="text" class="form-control bg-light fw-semibold" [value]="usuarioActual()!.nombre_completo" readonly />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Producto</label>
+          <select class="form-select" [(ngModel)]="nuevoLote.id_producto" name="id_producto" required>
+            <option *ngFor="let prod of catalogos().productos" [ngValue]="prod.id">{{ prod.nombre }}</option>
+          </select>
+        </div>
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Precio Unitario (S/)</label>
+            <input type="number" step="0.1" min="0.1" class="form-control" [(ngModel)]="nuevoLote.precio_unitario" name="precio" required />
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Stock Disponible</label>
+            <input type="number" min="1" class="form-control" [(ngModel)]="nuevoLote.stock_disponible" name="stock" required />
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Fecha de Cosecha</label>
+          <input type="date" class="form-control" [(ngModel)]="nuevoLote.fecha_cosecha" name="fecha" required />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Punto de Entrega en Huancayo / Valle</label>
+          <input type="text" class="form-control" [(ngModel)]="nuevoLote.punto_entrega" name="punto" placeholder="Ej. Feria Dominical Av. Huancavelica" required />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-success" data-bs-dismiss="modal">Guardar Cosecha</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Unirse como Productor -->
+<div class="modal fade" id="modalUnirse" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" (ngSubmit)="guardarNuevoProductor()">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">
+          <i class="bi bi-person-plus-fill me-2"></i>Solicitud de Afiliación — Productor
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="small text-muted">
+          Completa tus datos para integrarte al padrón de productores verificados del Valle del Mantaro. Tu celular servirá como clave para iniciar sesión.
+        </p>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Nombres</label>
+            <input type="text" class="form-control" [(ngModel)]="nuevoProductor.nombres" name="nombres" placeholder="Ej. Juan Carlos" required />
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Apellidos</label>
+            <input type="text" class="form-control" [(ngModel)]="nuevoProductor.apellidos" name="apellidos" placeholder="Ej. Quispe Huamán" required />
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">DNI (8 dígitos)</label>
+            <input type="text" maxlength="8" class="form-control" [(ngModel)]="nuevoProductor.dni" name="dni" placeholder="71234567" required />
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Celular / WhatsApp</label>
+            <input type="text" maxlength="9" class="form-control" [(ngModel)]="nuevoProductor.telefono" name="telefono" placeholder="964123456" required />
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Distrito de Producción</label>
+          <select class="form-select" [(ngModel)]="nuevoProductor.id_distrito" name="id_distrito" required>
+            <option *ngFor="let d of catalogos().distritos" [ngValue]="d.id">{{ d.nombre }}</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="submit" class="btn btn-success" data-bs-dismiss="modal">Registrarme como Productor</button>
+      </div>
+    </form>
+  </div>
+</div>
