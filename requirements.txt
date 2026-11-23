@@ -1,0 +1,18 @@
+# WankaAgro Track
+
+Plataforma web full-stack de trazabilidad agrícola y comercio directo sin intermediarios para productores y compradores del Valle del Mantaro (Huancayo, Concepción y Chupaca).
+
+## Arquitectura y Stack Tecnológico
+* **Backend:** FastAPI (Arquitectura por capas: APIs, Services, Schemas, Database) + `pyodbc`.
+* **Base de Datos:** SQL Server (`WankaAgroDB`) con esquema maestro-detalle (`Pedidos` / `Detalle_Pedidos`) y control transaccional de stock.
+* **Frontend:** Angular (Standalone Components, Signals, Zoneless) + Bootstrap 5.
+
+## Ejecución Local
+1. **Base de datos:** Ejecutar el script SQL en SQL Server Management Studio (`WankaAgroDB`).
+2. **Backend:**
+   ```bash
+   cd backend
+   python -m venv venv
+   venv\Scripts\activate
+   pip install -r requirements.txt
+   uvicorn app.main:app --reload

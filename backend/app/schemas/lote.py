@@ -8,8 +8,3 @@ class LoteCreate(BaseModel):
     stock_disponible: float = Field(..., gt=0, description="El stock inicial debe ser mayor a 0")
     fecha_cosecha: date
     punto_entrega: str = Field(..., min_length=5, max_length=150)
-
-class PedidoCreate(BaseModel):
-    id_comprador: int = Field(..., gt=0)
-    id_lote: int = Field(..., gt=0)
-    cantidad: float = Field(..., gt=0, description="Cantidad a reservar")
