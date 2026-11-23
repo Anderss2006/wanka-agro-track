@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WankaAgro Track | Comercio Justo Valle del Mantaro</title>
+    <!-- Bootstrap 5 CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <!-- Navbar Responsivo -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="#">
+                <i class="bi bi-sprout me-2"></i>WankaAgro Track
+            </a>
+            <span class="navbar-text text-white small d-none d-md-inline">
+                Trazabilidad Agrícola • Huancayo y Valle del Mantaro
+            </span>
+        </div>
+    </nav>
+
+    <!-- Contenedor Principal -->
+    <main class="container my-4">
+        
+        <!-- Encabezado y Botón de Acción -->
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+            <div>
+                <h1 class="h3 fw-bold text-dark mb-1">Cosechas Disponibles Hoy</h1>
+                <p class="text-muted mb-0">Reserva directo a productores locales sin intermediarios.</p>
+            </div>
+            <button class="btn btn-success fw-semibold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalPublicarLote">
+                <i class="bi bi-plus-circle me-1"></i> Publicar Nueva Cosecha
+            </button>
+        </div>
+
+        <!-- Alerta dinámica para notificaciones -->
+        <div id="alertaSistema" class="alert d-none alert-dismissible fade show" role="alert">
+            <span id="alertaMensaje"></span>
+            <button type="button" class="btn-close" onclick="ocultarAlerta()"></button>
+        </div>
+
+        <!-- Grilla de Tarjetas de Lotes (Se llena con JavaScript) -->
+        <div id="contenedorLotes" class="row g-4">
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-success" role="status"></div>
+                <p class="text-muted mt-2">Cargando cosechas del Valle del Mantaro...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL 1: Publicar Lote de Cosecha (Para Agricultores) -->
+    <div class="modal fade" id="modalPublicarLote" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formPublicarLote" class="needs-validation" novalidate>
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Registrar Lote de Cosecha</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Agricultor / Productor</label>
+                            <select id="selectProductor" class="form-select" required></select>
+                            <div class="invalid-feedback">Seleccione un productor registrado.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Producto Agrícola</label>
+                            <select id="selectProducto" class="form-select" required></select>
+                            <div class="invalid-feedback">Seleccione el producto a ofertar.</div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Precio Unitario (S/)</label>
+                                <input type="number" id="inputPrecio" class="form-control" step="0.10" min="0.50" required>
+                                <div class="invalid-feedback">Ingrese un precio mayor a S/ 0.50.</div>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Stock Disponible</label>
+                                <input type="number" id="inputStock" class="form-control" step="1" min="1" required>
+                                <div class="invalid-feedback">El stock mínimo es 1 unidad.</div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Fecha de Cosecha</label>
+                            <input type="date" id="inputFecha" class="form-control" required>
+                            <div class="invalid-feedback">Indique la fecha de cosecha.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Punto de Entrega en Huancayo</label>
+                            <input type="text" id="inputPuntoEntrega" class="form-control" placeholder="Ej: Feria Dominical Av. Huancavelica" minlength="5" required>
+                            <div class="invalid-feedback">Especifique un punto de entrega válido (mín. 5 letras).</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Publicar Oferta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: Reservar Pedido (Para Compradores) -->
+    <div class="modal fade" id="modalReservar" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form id="formReservar" class="needs-validation" novalidate>
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="bi bi-cart-check me-2"></i>Reservar Cosecha</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="reservaIdLote">
+                        <div class="alert alert-light border mb-3">
+                            <strong id="reservaNombreProducto" class="d-block text-primary"></strong>
+                            <small class="text-muted">Precio unitario: S/ <span id="reservaPrecioUnit"></span> | Disponible: <span id="reservaStockMax"></span></small>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Comprador / Restaurante</label>
+                            <select id="selectComprador" class="form-select" required></select>
+                            <div class="invalid-feedback">Seleccione quién realiza la reserva.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Cantidad a Reservar</label>
+                            <input type="number" id="inputCantidadReserva" class="form-control" step="1" min="1" required>
+                            <div class="invalid-feedback" id="feedbackCantidad">Ingrese una cantidad válida dentro del stock.</div>
+                        </div>
+                        <div class="text-end">
+                            <span class="text-muted">Total estimado: </span>
+                            <strong class="fs-5 text-success">S/ <span id="reservaTotalEstimado">0.00</span></strong>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Confirmar Reserva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Módulos propios del Frontend -->
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
